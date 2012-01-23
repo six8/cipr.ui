@@ -1,0 +1,9 @@
+{    
+    "name" : "cipr.ui",
+    "version" : "0.7.0",
+    "author" : "Mike Thornton",
+    "email" : "six8@devdetails.com",
+    "install_requires" : [
+        "git://github.com/six8/cipr.class.git"    
+    ]
+}
