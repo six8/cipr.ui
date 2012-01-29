@@ -27,7 +27,7 @@ EffectChain
 
 Transitions are a powerful feature of Corona. Often you need to run several transitions on a single object before finally destroying it. In this example, we'll create a mini-particle engine that will use EffectChain to power animations.
 
-Example::
+::
 
     local EffectChain = cipr.import 'cipr.ui.EffectChain'
     local random = math.random
@@ -61,7 +61,7 @@ ParallaxView
 
 Almost every 2D game has a Parallax background. ParallaxView makes it easy to create these types of backgrounds.
 
-Example::
+::
 
     local ParallaxView = cipr.import 'cipr.ui.widgets.ParallaxView'
 
