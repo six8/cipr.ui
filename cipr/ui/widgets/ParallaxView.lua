@@ -2,7 +2,6 @@ local stime = system.getTimer
 local max = math.max
 local cipr = require 'cipr'
 local class = cipr.import 'cipr.class'
-local DisplayGroupMixin = cipr.import 'cipr.ui.mixins.DisplayGroupMixin'
 local log = cipr.import('cipr.logging').getLogger(...)
 
 --[[
@@ -109,9 +108,10 @@ Example::
         view:scrollTo(world.x, world.y, world.xScale)
     end
 ]]--
-local ParallaxView = class.class('cipr.ui.widgets.ParallaxView'):include(DisplayGroupMixin)
+local ParallaxView = class.class('cipr.ui.widgets.ParallaxView')
 
 function ParallaxView:initialize(width, height)
+    self.view = display.newGroup()
     self.layers = {}
     self.numLayers = 0
     self.viewWidth = width
@@ -130,7 +130,7 @@ function ParallaxView:newLayer(speed)
     local layer = ParallaxLayer:new(speed)
     self.numLayers = self.numLayers + 1    
     self.layers[self.numLayers] = layer
-    self:insert(layer.view)
+    self.view:insert(layer.view)
     return layer
 end
 
@@ -180,7 +180,7 @@ function ParallaxView:scrollTo(x, y, scale)
     --     ?: in function <?:215>
 
     if not self.odd then
-        self:dispatchEvent{
+        self.view:dispatchEvent{
             name = 'parallaxScroll', 
             target = self, 
             x = x,
@@ -190,6 +190,10 @@ function ParallaxView:scrollTo(x, y, scale)
             deltaTime = delta
         }    
     end
+end
+
+function ParallaxView:addEventListener(...)
+    return self.view:addEventListener(...)
 end
 
 return ParallaxView

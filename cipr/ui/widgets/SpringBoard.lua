@@ -3,9 +3,8 @@ local max = math.max
 local floor = math.floor
 local abs = math.abs
 local cipr = require 'cipr'
-local class = cipr.import('cipr.class')
-local DisplayGroupMixin = cipr.import('cipr.ui.mixins.DisplayGroupMixin')
-local TouchListener = cipr.import('cipr.ui.TouchListener')
+local class = cipr.import 'cipr.class'
+local TouchListener = cipr.import 'cipr.ui.TouchListener'
 
 --[[
 Horizontal spring board.
@@ -25,7 +24,7 @@ Events
 * `changeSlide` - When the current slide is changed    
 ]]--
 
-local SpringBoard = class.class('cipr.ui.widgets.SpringBoard'):include(DisplayGroupMixin)
+local SpringBoard = class.class('cipr.ui.widgets.SpringBoard')
 
 SpringBoard.ADD_SLIDE_EVENT = 'addSlide'
 SpringBoard.CHANGE_SLIDE_EVENT = 'changeSlide'
@@ -48,6 +47,7 @@ Options
 ]]--
 function SpringBoard:initialize(width, height, opts)
     local opts = opts or {}
+    self.view = display.newGroup()
     self._pad = opts.margin or 0
     self._width = width
     self._height = height
@@ -58,7 +58,7 @@ function SpringBoard:initialize(width, height, opts)
     self._pane = display.newGroup()
     self._currentSlide = 1
 
-    self:insert(self._pane)
+    self.view:insert(self._pane)
     TouchListener(self._pane, self)
 end
 
@@ -96,7 +96,7 @@ function SpringBoard:add(name, slideObj)
     slideObj.y = 0
     slideObj.x = (slideNum - 1) * (self._width + self._pad)
 
-    self:dispatchEvent(SpringBoard.ADD_SLIDE_EVENT, {
+    self.view:dispatchEvent(SpringBoard.ADD_SLIDE_EVENT, {
         name = SpringBoard.ADD_SLIDE_EVENT,
         target = slideObj,
         position = slideNum
@@ -206,5 +206,10 @@ function SpringBoard:drag(handler)
 
     return handler
 end
+
+function SpringBoard:addEventListener(...)
+    return self.view:addEventListener(...)
+end
+
     
 return SpringBoard

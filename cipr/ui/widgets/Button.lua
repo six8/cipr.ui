@@ -1,12 +1,11 @@
 local cipr = require 'cipr'
 local class = cipr.import('cipr.class')
-local DisplayGroupMixin = cipr.import('cipr.ui.mixins.DisplayGroupMixin')
 
 --[[
 Make a button out of any display object.
 ]]--
 
-local Button = class.class('cipr.ui.widgets.Button'):include(DisplayGroupMixin)
+local Button = class.class('cipr.ui.widgets.Button')
 
 -- For each of the properties, call the setter associated with that property name.
 -- For example, a property `foo` will be passed to `setFoo()`. If no setter exists,
@@ -57,11 +56,12 @@ local function initObj(obj)
 end
 
 function Button:initialize(config)
+    self.view = display.newGroup()
     self._config = config
     self.isFocus = false
     
     if config.parent then
-        config.parent:insert(self)
+        config.parent:insert(self.view)
     end
     
     self.backgrounds = {
@@ -77,22 +77,22 @@ function Button:initialize(config)
     
     if config.background then
         self.backgrounds.objs.default = initObj(config.background)
-        self:insert(self.backgrounds.objs.default)
+        self.view:insert(self.backgrounds.objs.default)
     else        
         self.backgrounds.objs.default = makeRect{color={0, 0, 0}, border={3, 255, 255, 255}}
-        self:insert(self.backgrounds.objs.default)        
+        self.view:insert(self.backgrounds.objs.default)        
     end
 
     self.btnWidth = self.backgrounds.objs.default.width
 
     if config.pressedBackground then
         self.backgrounds.objs.pressed = initObj(config.pressedBackground)
-        self:insert(self.backgrounds.objs.pressed)
+        self.view:insert(self.backgrounds.objs.pressed)
     elseif config.background then
         self.backgrounds.objs.pressed = self.backgrounds.objs.default
     else
         self.backgrounds.objs.pressed = makeRect{color={200, 200, 200}, border={3, 255, 255, 255}}
-        self:insert(self.backgrounds.objs.pressed)
+        self.view:insert(self.backgrounds.objs.pressed)
     end
     
     if config.text then
@@ -108,7 +108,7 @@ function Button:initialize(config)
     end
     
         
-    self:addEventListener('touch', self)
+    self.view:addEventListener('touch', self)
 end
 
 function Button:setText(config)
@@ -144,8 +144,8 @@ function Button:setText(config)
     end
 
     if not self.textContainer then
-        self.textContainer = display.newGroup()
-        self:insert(self.textContainer)
+        self.textContainer = display.newGroup()    
+        self.view:insert(self.textContainer)
     end
 
     if not self.textBox then
@@ -214,7 +214,7 @@ function Button:touch(event)
         result = self:_onPress(event)
 
         -- Subsequent touch events will target button even if they are outside the contentBounds of button
-        display.getCurrentStage():setFocus( self, event.id )
+        display.getCurrentStage():setFocus( self.view, event.id )
         self.isFocus = true
     
     elseif self.isFocus then
@@ -240,7 +240,7 @@ function Button:touch(event)
             end
         
             -- Allow touch events to be sent normally to the objects they 'hit'
-            display.getCurrentStage():setFocus( self, nil )
+            display.getCurrentStage():setFocus( self.view, nil )
             self.isFocus = false
         end
     end

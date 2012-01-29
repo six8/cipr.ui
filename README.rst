@@ -67,8 +67,8 @@ Almost every 2D game has a Parallax background. ParallaxView makes it easy to cr
 
     local background = display.newGroup()
 
-    local pview = ParallaxView(display.contentWidth, display.contentHeight)
-    background:insert(pview)
+    local pview = ParallaxView:new(display.contentWidth, display.contentHeight)
+    background:insert(pview.view)
     background.y = display.contentHeight
 
     -- This layer moves at 1/4 the speed
