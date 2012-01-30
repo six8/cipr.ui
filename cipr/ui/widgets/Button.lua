@@ -218,7 +218,7 @@ function Button:touch(event)
         self.isFocus = true
     
     elseif self.isFocus then
-        local bounds = self.contentBounds
+        local bounds = self.view.contentBounds
         local x, y = event.x, event.y
         local isWithinBounds = 
             bounds.xMin <= x and bounds.xMax >= x and bounds.yMin <= y and bounds.yMax >= y
