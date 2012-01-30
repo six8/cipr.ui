@@ -103,7 +103,7 @@ function Button:initialize(config)
     
     for _, k in pairs({'x', 'y', 'xScale', 'yScale'}) do
         if config[k] then
-            self[k] = config[k]
+            self.view[k] = config[k]
         end
     end
     
