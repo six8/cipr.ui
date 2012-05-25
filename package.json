@@ -1,6 +1,6 @@
 {    
     "name" : "cipr.ui",
-    "version" : "0.7.0",
+    "version" : "0.7.1",
 	"author" : "Mike Thornton <six8@devdetails.com>",
 	"dependencies" : {
         "cipr.class" : "git://github.com/six8/cipr.class.git"    

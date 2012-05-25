@@ -51,7 +51,7 @@ function ParallaxLayer:addCol(displayObj)
     self.cols[self.numCols] = col
 end
 
-function ParallaxLayer:_scrollCol(i, col, x, y)
+function ParallaxLayer:_scrollCol(i, col, x, y, scale)
     local w = self.totalWidth
     x = (((x + col.offset) % w)  % w ) - self._halfTotalWidth
     
@@ -62,7 +62,7 @@ function ParallaxLayer:_scrollCol(i, col, x, y)
 
     -- Hide objects that are offscreen for performance
     -- TODO Use the parallax view width to determine this
-    col.obj.isVisible = right >= -self._halfTotalWidth and left <= (display.contentWidth / self.view.xScale)
+    col.obj.isVisible = right >= -self._halfTotalWidth and left <= (display.contentWidth / scale)
 end
 
 function ParallaxLayer:scrollTo(x, y, scale)
@@ -74,7 +74,7 @@ function ParallaxLayer:scrollTo(x, y, scale)
 
     for i=1,self.numCols do
         local col = self.cols[i]
-        self:_scrollCol(i, col, x, y)
+        self:_scrollCol(i, col, x, y, scale)
     end
 end
 
@@ -112,6 +112,9 @@ local ParallaxView = class.class('cipr.ui.widgets.ParallaxView')
 
 function ParallaxView:initialize(width, height)
     self.view = display.newGroup()
+    self.xPos = 0
+    self.yPos = 0
+    self.scale = 1
     self.layers = {}
     self.numLayers = 0
     self.viewWidth = width
@@ -166,6 +169,10 @@ function ParallaxView:scrollTo(x, y, scale)
     --     layer:scrollTo(x, y, scale)
     -- end
 
+    self.xPos = x
+    self.yPos = y
+    self.scale = scale
+
     for i=1,self.numLayers do
         local layer = self.layers[i]
         layer:scrollTo(x, y, scale)
@@ -179,19 +186,33 @@ function ParallaxView:scrollTo(x, y, scale)
     --     ?: in function '?'
     --     ?: in function <?:215>
 
-    if not self.odd then
+    -- if not self.odd then
         self.view:dispatchEvent{
             name = 'parallaxScroll', 
-            target = self, 
+            target = self.view,
+            parallaxView = self, 
             x = x,
             y = y,
             scale = scale,
             time = t,
             deltaTime = delta
         }    
-    end
+    -- end
 end
 
+--[[
+Scroll the ParallaxView relative to current position
+
+:param x: float - x coordinate of "camera"
+:param y: float - y coordinate of "camera" (default 0)
+:param scale: float - scale of ParallaxView, used for camera zoooms (default 1) 
+]]--
+function ParallaxView:update(x, y, scale)
+    local y = y or 0
+    x, y, scale = self.xPos + x, self.yPos + y, scale or self.scale
+    self:scrollTo(x, y, scale)    
+end
+    
 function ParallaxView:addEventListener(...)
     return self.view:addEventListener(...)
 end
