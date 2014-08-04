@@ -21,7 +21,7 @@ Events
     * target - New slide object
     * position - Position number of new slide
 
-* `changeSlide` - When the current slide is changed    
+* `changeSlide` - When the current slide is changed
 ]]--
 
 local SpringBoard = class.class('cipr.ui.widgets.SpringBoard')
@@ -30,13 +30,13 @@ SpringBoard.ADD_SLIDE_EVENT = 'addSlide'
 SpringBoard.CHANGE_SLIDE_EVENT = 'changeSlide'
 
 --[[
-The width and height determine the virtual size of each slide. Width and height 
-can be smaller (or larger than) the screen. No scaling is done to fit objects 
+The width and height determine the virtual size of each slide. Width and height
+can be smaller (or larger than) the screen. No scaling is done to fit objects
 within this size so objects may be much smaller or even larger than the box. Objects
 are placed at the center of this box.
 
-:param width: int - The maximum width of a single slide. 
-:param height: int - The maximum height of a single slide. 
+:param width: int - The maximum width of a single slide.
+:param height: int - The maximum height of a single slide.
 :param opts: table - Options
 
 
@@ -56,28 +56,31 @@ function SpringBoard:initialize(width, height, opts)
     self._currentTransition = nil
     self.slingThreshold = opts.slingThreshold or self._width / 5
     self._pane = display.newGroup()
+    self._toucher = display.newRect(self.view, 0, 0, self._width, self._height)
+    self._toucher.isVisible = false
+    self._toucher.isHitTestable = true
     self._currentSlide = 1
 
     self.view:insert(self._pane)
-    TouchListener(self._pane, self)
+    TouchListener(self._pane, self, self._toucher)
 end
 
 local function cancelTransition(self)
     if self._currentTransition then
         transition.cancel(self._currentTransition)
         self._currentTransition = nil
-    end    
-end    
+    end
+end
 
 local function clampSlideNum(self, num)
     return max(1, min(num, #self._slideNumIdx))
 end
-    
+
 local function calcSlideNum(self, clamp)
     local xOffset = -(self._pane.x / (self._width + self._pad)) + 1
-    local num = floor(xOffset + 0.5)   
-    
-    if clamp == false then 
+    local num = floor(xOffset + 0.5)
+
+    if clamp == false then
         return num
     else
         return clampSlideNum(self, num)
@@ -103,13 +106,29 @@ function SpringBoard:add(name, slideObj)
     })
 end
 
-local function gotoSlide(self, target)
+
+--[[
+Remove all slides
+]]--
+function SpringBoard:clear()
+    local slides = self._slideNumIdx
+    for i=1,#slides do
+        local slide = slides[i]
+        display.remove(slide)
+    end
+
+    self._slideNumIdx = {}
+    self._slides = {}
+end
+
+
+local function gotoSlide(self, target, now)
     local target = target
     local xTarget = -target.x
     local xDelta = xTarget - self._pane.x
 
     local transTime = 1000 * (abs(xDelta) / 600)
-    
+
     cancelTransition(self)
 
     local onComplete = function()
@@ -124,43 +143,47 @@ local function gotoSlide(self, target)
         -- })
     end
 
-    self._currentTransition = transition.to(self._pane, { 
-        x = xTarget,
-        time = transTime,
-        transition = easing.outQuad, 
-        onComplete = onComplete 
-    })    
+    if now then
+        self._pane.x = xTarget
+        onComplete()
+    else
+        self._currentTransition = transition.to(self._pane, {
+            x = xTarget,
+            time = transTime,
+            transition = easing.outQuad,
+            onComplete = onComplete
+        })
+    end
 end
 
 --[[
 Jump to slide by name
 ]]--
-function SpringBoard:goto(name, method)
+function SpringBoard:goto(name, now)
     cancelTransition(self)
 
     local target = self._slides[name]
-    assert(target, 'Slide ' .. name .. ' not found')   
-    
-    gotoSlide(self, target)     
+    assert(target, 'Slide ' .. name .. ' not found')
+
+    gotoSlide(self, target, now)
 end
 
 --[[
 Jump to slide by position number
 ]]--
-function SpringBoard:gotoNum(num, method)
+function SpringBoard:gotoNum(num, now)
     local num = clampSlideNum(self, num)
     local target = self._slideNumIdx[num]
 
-    assert(target, 'Slide #' .. num .. ' not found')        
+    assert(target, 'Slide #' .. num .. ' not found')
 
-    gotoSlide(self, target)
+    gotoSlide(self, target, now)
 end
 
 --[[
 Drag handler
 ]]--
-function SpringBoard:drag(handler)
-
+function SpringBoard:targetWasDragged(handler)
     handler.lockAxis = true
     handler.axis = 'x'
 
@@ -187,7 +210,7 @@ function SpringBoard:drag(handler)
         local slideNum = calcSlideNum(this, false)
         currentSlide = clampSlideNum(this, slideNum)
         if slideNum < 1 or slideNum > numSlides then
-            self:cancel(event)            
+            self:cancel(event)
         end
     end
 
@@ -200,7 +223,7 @@ function SpringBoard:drag(handler)
                 currentSlide = currentSlide - 1
             end
         end
-                
+
         this:gotoNum(currentSlide)
     end
 
@@ -211,5 +234,5 @@ function SpringBoard:addEventListener(...)
     return self.view:addEventListener(...)
 end
 
-    
+
 return SpringBoard

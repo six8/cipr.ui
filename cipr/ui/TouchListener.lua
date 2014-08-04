@@ -24,91 +24,142 @@ local duration = function(startTime)
     return getDuration
 end
 
-local TouchHandler = class.class('cipr.ui.TouchHandler')
-
-function TouchHandler:initialize(listener, target, event)
+--[[
+Base class for Touch event
+]]--
+local Touch = class.class(... .. '.Touch')
+function Touch:initialize(listener, target, event)
     self.listener = listener
     self.target = target
     self.xStart = event.xStart
-    self.yStart = event.yStart  
-    self.xTargetOffset = event.xTargetOffset 
-    self.yTargetOffset = event.yTargetOffset 
-    self.duration = duration(event.time)    
+    self.yStart = event.yStart
+    self.xFirst = event.x
+    self.yFirst = event.y
+    self.xLast = event.x
+    self.yLast = event.y
+    self.xTargetOffset = event.xTargetOffset
+    self.yTargetOffset = event.yTargetOffset
+    self.xOffset = 0
+    self.yOffset = 0
+    self.duration = duration(event.time)
 end
 
-function TouchHandler:began(event)
+--[[
+Called when a touch begins
+]]--
+function Touch:began(event)
 end
 
-function TouchHandler:moved(event)
-    
+--[[
+Called when a touch moves
+]]--
+function Touch:moved(event)
 end
 
-function TouchHandler:ended(event)
-    
+--[[
+Called when a touch ends
+]]--
+function Touch:ended(event)
 end
 
-function TouchHandler:cancelled(event)
-    
+--[[
+Called when a touch has been cancelled
+]]--
+function Touch:cancelled(event)
 end
 
-function TouchHandler:final(event)
-    
+--[[
+Called when a touch has ended or been cancelled
+]]--
+function Touch:final(event)
 end
 
-function TouchHandler:cancel(event)
+--[[
+Cancel a touch
+]]--
+function Touch:cancel(event)
     self.listener:cancel(self, event)
 end
 
-local TapHandler = class.class('cipr.ui.DragHandler', TapHandler)
+local Tap = class.class(... .. '.Tap', Touch)
+function Tap:initialize(listener, target, event)
+    Touch.initialize(self, listener, target, event)
+    self.x = event.x
+    self.y = event.y
+end
 
-local DragHandler = class.class('cipr.ui.DragHandler', TouchHandler)
+--[[
+Trag drag events
+]]--
+local Drag = class.class(... .. '.Drag', Touch)
+Drag.X_AXIS = 'x'
+Drag.Y_AXIS = 'y'
 
-function DragHandler:initialize(listener, target, event, axis)
-    TouchHandler.initialize(self, listener, target, event)
+function Drag:initialize(listener, target, event, axis, direction)
+    Touch.initialize(self, listener, target, event)
+    -- Is drag happening on X_AXIS or Y_AXIS axis?
     self.axis = axis
+    -- Should we only allow dragging along an axis?
     self.lockAxis = nil
+    -- Ratio we move objects to touch movement
     self.ratio = 1
+    self.direction = direction
 end
 
 --[[
 Default drag handler, move object to position
 ]]--
-function DragHandler:moved(event)
-    local moveX = true
-    local moveY = true
+function Drag:moved(event)
+    local xRatio = self.ratio
+    local yRatio = self.ratio
 
     if self.lockAxis then
-        if self.axis == 'y' then
-            moveX = false
+        if self.axis == Drag.Y_AXIS then
+            xRatio = 0
         else
-            moveY = false
+            yRatio = 0
         end
     end
-    
-    if moveX then
-        local xDelta = (event.x - self.xTargetOffset) - self.target.x
-        self.target.x = self.target.x + (xDelta * self.ratio)
-    end
 
-    if moveY then
-        local yDelta = (event.y - self.yTargetOffset) - self.target.y
-        self.target.y = self.target.y + (yDelta * self.ratio)
-    end
+    local xDelta = ((event.x - self.xTargetOffset) - self.target.x) * xRatio
+    local yDelta = ((event.y - self.yTargetOffset) - self.target.y) * yRatio
+
+    self.target:translate(xDelta, yDelta)
 end
 
-function DragHandler:getDistance(event)
+--[[
+Get distance a drag has moved
+Returns {x distance, y distance}
+]]--
+function Drag:getDistance(event)
     return event.x - self.xStart, event.y - self.yStart
 end
 
-local TouchListener = class.class('cipr.ui.TouchListener')
+--[[
+Handle Corona touch events and turn them into Touch objects
+
+Drag
+---
+To listen to drag events, must implement `targetWasDragged(Drag)`
+that returns a handler.
+
+For default Drag behavior of moving target, target must implement
+`translate(x, y)`.
+
+Tap
+---
+To listen to tap events, must implement `targetWasTapped(Tap)`.
+]]--
+local TouchListener = class.class(...)
 
 -- Number of pixels has to move to be considered a drag
 TouchListener.dragThreshold = 10
 
-function TouchListener:initialize(target, listener)
+function TouchListener:initialize(target, listener, toucher)
     self._target = target
     self._listener = listener or self._target
-    self._target:addEventListener('touch', self)
+    self._toucher = toucher or self._target
+    self._toucher:addEventListener('touch', self)
     self._moveHandler = nil
 end
 
@@ -128,11 +179,12 @@ function TouchListener:cancel(handler, event)
         self._moveHandler:final(event)
     end
 
-    reset(self) 
+    reset(self)
 end
 
 function TouchListener:touch(event)
     local phase = event.phase
+    local result
 
     if phase == 'began' then
         if self._moveHandler then
@@ -141,48 +193,73 @@ function TouchListener:touch(event)
             self._moveHandler = nil
         end
 
-        display.getCurrentStage():setFocus(self._target)
-        
+        display.getCurrentStage():setFocus(self._toucher)
+
         self.isFocus = true
 
         self._startEvent = event
         self._startEvent.xTargetOffset = event.x - self._target.x
         self._startEvent.yTargetOffset = event.y - self._target.y
-                                    
-        return true
+
+        result = true
     elseif self.isFocus then
         if phase == 'moved' then
             if self._moveHandler then
-                return self._moveHandler:moved(event)
+                -- self._moveHandler.direction = 1
+                if self._moveHandler.axis == Drag.X_AXIS then
+                    if event.x < self.xLast then
+                        self._moveHandler.direction = -1
+                    elseif event.x > self.xLast then
+                        self._moveHandler.direction = 1
+                    end
+                elseif self._moveHandler.axis == Drag.Y_AXIS then
+                    if event.y < self.yLast then
+                        self._moveHandler.direction = -1
+                    elseif event.y > self.yLast then
+                        self._moveHandler.direction = 1
+                    end
+                end
+
+                result = self._moveHandler:moved(event)
             else
                 -- Detect handler
-                local xMovement = abs(event.xStart - event.x)
-                local yMovement = abs(event.yStart - event.y)
+                if self._listener.targetWasDragged then
+                    local xMovement = abs(event.xStart - event.x)
+                    local yMovement = abs(event.yStart - event.y)
 
-                if self._listener.drag then
                     if xMovement > self.dragThreshold or yMovement > self.dragThreshold then
                         -- looks like a drag
-                        local axis = xMovement > yMovement and 'x' or 'y'    
+                        local axis = xMovement > yMovement and Drag.X_AXIS or Drag.Y_AXIS
+                        local direction = 1
+                        if (axis == Drag.X_AXIS and event.x < event.xStart) or (axis == Drag.Y_AXIS and event.y < event.yStart) then
+                            direction = -1
+                        end
 
-                        self._moveHandler = DragHandler:new(self, self._target, self._startEvent, axis)
-                        self._moveHandler = self._listener:drag(self._moveHandler)
-                        self._moveHandler:began(self._startEvent)
-                        self._moveHandler:moved(event)
+                        self._moveHandler = Drag:new(self, self._target, self._startEvent, axis, direction)
+                        self._moveHandler = self._listener:targetWasDragged(self._moveHandler)
+                        if self._moveHandler then
+                            self._moveHandler:began(self._startEvent)
+                            self._moveHandler:moved(event)
+                        else
+                            self:cancel()
+                        end
                     end
                 end
             end
 
         elseif phase == 'ended' or phase == 'cancelled' then
             local handler = self._moveHandler
-            if not handler then
+            if not handler and handler ~= false then
                 -- Never had a move handler, maybe this is a tap
-                if self._listener._tap then
-                    handler = TapHandler:new(self, self._target, self._startEvent)
-                    handler = self._listener:tap(handler)
-                    handler:began(self._startEvent)                  
+                if self._listener.targetWasTapped then
+                    handler = Tap:new(self, self._target, self._startEvent)
+                    handler = self._listener:targetWasTapped(handler)
+                    if handler then
+                        handler:began(self._startEvent)
+                    end
                 end
             end
-                            
+
             if handler then
                 if phase == 'ended' then
                     handler:ended(event)
@@ -193,13 +270,16 @@ function TouchListener:touch(event)
 
             reset(self)
 
-            local ret
             if handler then
-                ret = handler:final(event)
+                result = handler:final(event)
             end
-            return ret
         end
-    end    
+    end
+
+    self.xLast = event.x
+    self.yLast = event.y
+
+    return result
 end
 
 return TouchListener
