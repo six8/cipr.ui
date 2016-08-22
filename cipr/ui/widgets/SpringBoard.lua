@@ -104,6 +104,7 @@ function SpringBoard:add(name, slideObj)
         target = slideObj,
         position = slideNum
     })
+    return slideNum
 end
 
 
