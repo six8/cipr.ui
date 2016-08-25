@@ -136,12 +136,11 @@ local function gotoSlide(self, target, now)
         cancelTransition(self)
         self._currentSlide = calcSlideNum(self)
 
-        -- TODO For some reason dispatching this event throws a runtime error
-        -- self:dispatchEvent(SpringBoard.CHANGE_SLIDE_EVENT, {
-        --     name = SpringBoard.CHANGE_SLIDE_EVENT,
-        --     target = target,
-        --     position = self._currentSlide
-        -- })
+        self.view:dispatchEvent({
+            name = SpringBoard.CHANGE_SLIDE_EVENT,
+            target = target,
+            position = self._currentSlide
+        })
     end
 
     if now then
@@ -234,6 +233,5 @@ end
 function SpringBoard:addEventListener(...)
     return self.view:addEventListener(...)
 end
-
 
 return SpringBoard
