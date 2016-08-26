@@ -15,19 +15,21 @@ TODO Hide offscreen items
 Events
 ------
 
-* `addSlide` - When a slide is added to the springboard.
+* `ADD_SLIDE_EVENT` - When a slide is added to the springboard.
 
     * name - Event name
     * target - New slide object
     * position - Position number of new slide
 
-* `changeSlide` - When the current slide is changed
+* `CHANGE_SLIDE_EVENT` - When the current slide is changed
+* `SLIDING_EVENT` - When the board is actively sliding
 ]]--
 
 local SpringBoard = class.class('cipr.ui.widgets.SpringBoard')
 
 SpringBoard.ADD_SLIDE_EVENT = 'addSlide'
 SpringBoard.CHANGE_SLIDE_EVENT = 'changeSlide'
+SpringBoard.SLIDING_EVENT = 'sliding'
 
 --[[
 The width and height determine the virtual size of each slide. Width and height
@@ -53,7 +55,7 @@ function SpringBoard:initialize(width, height, opts)
     self._height = height
     self._slides = {}
     self._slideNumIdx = {}
-    self._currentTransition = nil
+    self._currentTransitions = {}
     self.slingThreshold = opts.slingThreshold or self._width / 5
     self._pane = display.newGroup()
     self._toucher = display.newRect(self.view, 0, 0, self._width, self._height)
@@ -65,10 +67,18 @@ function SpringBoard:initialize(width, height, opts)
     TouchListener(self._pane, self, self._toucher)
 end
 
-local function cancelTransition(self)
-    if self._currentTransition then
-        transition.cancel(self._currentTransition)
-        self._currentTransition = nil
+function SpringBoard:_addTransition(transition)
+    self._currentTransitions[#self._currentTransitions+1] = transition
+end
+
+local function cancelCurrentTransitions(self)
+    if #self._currentTransitions then
+        local toCancel = self._currentTransitions
+        self._currentTransitions = {}
+
+        for i=1,#toCancel do
+            transition.cancel(toCancel[i])
+        end
     end
 end
 
@@ -130,10 +140,9 @@ local function gotoSlide(self, target, now)
 
     local transTime = 1000 * (abs(xDelta) / 600)
 
-    cancelTransition(self)
+    cancelCurrentTransitions(self)
 
     local onComplete = function()
-        cancelTransition(self)
         self._currentSlide = calcSlideNum(self)
 
         self.view:dispatchEvent({
@@ -147,12 +156,12 @@ local function gotoSlide(self, target, now)
         self._pane.x = xTarget
         onComplete()
     else
-        self._currentTransition = transition.to(self._pane, {
+        self:_addTransition(transition.to(self._pane, {
             x = xTarget,
             time = transTime,
             transition = easing.outQuad,
             onComplete = onComplete
-        })
+        }))
     end
 end
 
@@ -160,7 +169,7 @@ end
 Jump to slide by name
 ]]--
 function SpringBoard:goto(name, now)
-    cancelTransition(self)
+    cancelCurrentTransitions(self)
 
     local target = self._slides[name]
     assert(target, 'Slide ' .. name .. ' not found')
@@ -190,11 +199,11 @@ function SpringBoard:targetWasDragged(handler)
     local startSlide = self._currentSlide
     local currentSlide = startSlide
     local numSlides = #self._slideNumIdx
-    local this = self
+    local springBoard = self
 
     local oldMovedHandler = handler.moved
     function handler:moved(event)
-        cancelTransition(self)
+        cancelCurrentTransitions(springBoard)
 
         local xDistance, yDistance = self:getDistance(event)
         if currentSlide == 1 and xDistance > 0 then
@@ -207,24 +216,31 @@ function SpringBoard:targetWasDragged(handler)
 
         oldMovedHandler(self, event)
 
-        local slideNum = calcSlideNum(this, false)
-        currentSlide = clampSlideNum(this, slideNum)
+        local slideNum = calcSlideNum(springBoard, false)
+        currentSlide = clampSlideNum(springBoard, slideNum)
         if slideNum < 1 or slideNum > numSlides then
             self:cancel(event)
         end
+
+        springBoard.view:dispatchEvent({
+            name = SpringBoard.SLIDING_EVENT,
+            position = currentSlide,
+            xDistance=xDistance,
+            yDistance=yDistance
+        })
     end
 
     function handler:final(event)
         local xDistance, yDistance = self:getDistance(event)
         if currentSlide == startSlide then
-            if xDistance < -this.slingThreshold then
+            if xDistance < -springBoard.slingThreshold then
                 currentSlide = currentSlide + 1
-            elseif xDistance > this.slingThreshold then
+            elseif xDistance > springBoard.slingThreshold then
                 currentSlide = currentSlide - 1
             end
         end
 
-        this:gotoNum(currentSlide)
+        springBoard:gotoNum(currentSlide)
     end
 
     return handler
