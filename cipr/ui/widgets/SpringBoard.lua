@@ -15,19 +15,21 @@ TODO Hide offscreen items
 Events
 ------
 
-* `addSlide` - When a slide is added to the springboard.
+* `ADD_SLIDE_EVENT` - When a slide is added to the springboard.
 
     * name - Event name
     * target - New slide object
     * position - Position number of new slide
 
-* `changeSlide` - When the current slide is changed
+* `CHANGE_SLIDE_EVENT` - When the current slide is changed
+* `SLIDING_EVENT` - When the board is actively sliding
 ]]--
 
 local SpringBoard = class.class('cipr.ui.widgets.SpringBoard')
 
 SpringBoard.ADD_SLIDE_EVENT = 'addSlide'
 SpringBoard.CHANGE_SLIDE_EVENT = 'changeSlide'
+SpringBoard.SLIDING_EVENT = 'sliding'
 
 --[[
 The width and height determine the virtual size of each slide. Width and height
@@ -219,6 +221,13 @@ function SpringBoard:targetWasDragged(handler)
         if slideNum < 1 or slideNum > numSlides then
             self:cancel(event)
         end
+
+        springBoard.view:dispatchEvent({
+            name = SpringBoard.SLIDING_EVENT,
+            position = currentSlide,
+            xDistance=xDistance,
+            yDistance=yDistance
+        })
     end
 
     function handler:final(event)
